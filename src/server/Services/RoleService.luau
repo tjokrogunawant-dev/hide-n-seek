@@ -31,6 +31,8 @@ local function assignRoles()
 	task.wait(0.1) -- let characters finish loading before teleporting
 	local allPlayers = Players:GetPlayers()
 	local count = #allPlayers
+	print(`[RoleService] assignRoles called, {count} players`)
+
 	local seekerCount = math.ceil(count * Constants.SEEKER_RATIO)
 
 	-- Fisher-Yates shuffle
@@ -42,6 +44,7 @@ local function assignRoles()
 
 	local hiderSpawns = MapService.getHiderSpawns()
 	local seekerSpawns = MapService.getSeekerSpawns()
+	print(`[RoleService] hiderSpawns={#hiderSpawns} seekerSpawns={#seekerSpawns}`)
 
 	for i, player in shuffled do
 		local role: Role = if i <= seekerCount then "Seeker" else "Hider"
@@ -53,6 +56,9 @@ local function assignRoles()
 		playerRoles[player] = role
 
 		local spawnPos = spawns[((i - 1) % #spawns) + 1]
+		print(
+			`[RoleService] {player.Name} → {role}, teleporting to {spawnPos}, char={player.Character ~= nil}`
+		)
 		MapService.teleportPlayerTo(player, spawnPos)
 		setWalkSpeed(player, speed)
 		Remotes.RoleAssigned:FireClient(player, role)
