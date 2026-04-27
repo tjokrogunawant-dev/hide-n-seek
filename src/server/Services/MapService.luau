@@ -188,10 +188,7 @@ function MapService.getSeekerSpawns(): { Vector3 }
 end
 
 function MapService.teleportPlayerTo(player: Player, position: Vector3)
-	local character = player.Character
-	if not character then
-		return
-	end
+	local character = player.Character or player.CharacterAdded:Wait()
 	character:PivotTo(CFrame.new(position))
 end
 
