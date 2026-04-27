@@ -29,9 +29,23 @@ local function broadcastTimer(seconds: number)
 end
 
 local function waitForPlayers()
+	-- Wait until minimum players are present
 	while #Players:GetPlayers() < Constants.MIN_PLAYERS do
 		task.wait(1)
 	end
+	-- Countdown to give more players time to join
+	print(`[RoundService] {Constants.MIN_PLAYERS} players reached, starting lobby countdown`)
+	for remaining = Constants.LOBBY_WAIT_DURATION, 1, -1 do
+		-- Reset countdown if player count drops below minimum
+		if #Players:GetPlayers() < Constants.MIN_PLAYERS then
+			print("[RoundService] Player left during countdown, resetting")
+			waitForPlayers()
+			return
+		end
+		broadcastTimer(remaining)
+		task.wait(1)
+	end
+	broadcastTimer(0)
 end
 
 local function runRound()

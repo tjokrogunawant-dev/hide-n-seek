@@ -130,7 +130,7 @@ local function buildMap1(): Model
 			Enum.Material.Neon
 		)
 		part.CanCollide = false
-		part.Transparency = 0.8
+		part.Transparency = 1
 		table.insert(hiderSpawnPositions, pos)
 	end
 
@@ -154,7 +154,7 @@ local function buildMap1(): Model
 			Enum.Material.Neon
 		)
 		part.CanCollide = false
-		part.Transparency = 0.8
+		part.Transparency = 1
 		table.insert(seekerSpawnPositions, pos)
 	end
 

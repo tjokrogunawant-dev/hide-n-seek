@@ -2,6 +2,7 @@
 
 return table.freeze({
 	MIN_PLAYERS = 2,
+	LOBBY_WAIT_DURATION = 15, -- countdown after MIN_PLAYERS is reached
 	HIDING_DURATION = 15,
 	SEEKING_DURATION = 90,
 	INTERMISSION_DURATION = 10,
