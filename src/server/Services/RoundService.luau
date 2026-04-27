@@ -12,23 +12,20 @@ type RoundState = Types.RoundState
 local RoundService = {}
 
 local state: RoundState = "Lobby"
+local pendingWinner: string = "Hiders"
+
+local stateChangedEvent = Instance.new("BindableEvent")
+RoundService.StateChanged = stateChangedEvent.Event
 
 local function setState(newState: RoundState)
 	state = newState
 	Remotes.RoundStateChanged:FireAllClients(newState)
+	stateChangedEvent:Fire(newState)
 	print(`[RoundService] State → {newState}`)
 end
 
 local function broadcastTimer(seconds: number)
 	Remotes.TimerUpdate:FireAllClients(seconds)
-end
-
-local function countdown(duration: number)
-	for remaining = duration, 1, -1 do
-		broadcastTimer(remaining)
-		task.wait(1)
-	end
-	broadcastTimer(0)
 end
 
 local function waitForPlayers()
@@ -40,25 +37,41 @@ end
 local function runRound()
 	-- Hiding phase
 	setState("Hiding")
-	countdown(Constants.HIDING_DURATION)
+	for remaining = Constants.HIDING_DURATION, 1, -1 do
+		broadcastTimer(remaining)
+		task.wait(1)
+	end
+	broadcastTimer(0)
 
-	-- Seeking phase
+	-- Seeking phase — exits early if forceEndSeeking() is called
 	setState("Seeking")
-	countdown(Constants.SEEKING_DURATION)
+	for remaining = Constants.SEEKING_DURATION, 1, -1 do
+		if state ~= "Seeking" then
+			break
+		end
+		broadcastTimer(remaining)
+		task.wait(1)
+	end
+	broadcastTimer(0)
 
 	-- Results phase
 	setState("Results")
-	Remotes.RoundResults:FireAllClients("Hiders") -- default winner; overridden by TaggingService later
-	countdown(Constants.INTERMISSION_DURATION)
+	Remotes.RoundResults:FireAllClients(pendingWinner)
+	pendingWinner = "Hiders" -- reset for next round
+	for remaining = Constants.INTERMISSION_DURATION, 1, -1 do
+		broadcastTimer(remaining)
+		task.wait(1)
+	end
+	broadcastTimer(0)
 end
 
 function RoundService.getState(): RoundState
 	return state
 end
 
-function RoundService.forceEndSeeking()
-	-- Called by TaggingService when all hiders are frozen
-	state = "Results"
+function RoundService.forceEndSeeking(winner: string?)
+	pendingWinner = winner or "Hiders"
+	state = "Results" -- seeking countdown detects this and breaks
 end
 
 function RoundService.start()

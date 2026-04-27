@@ -171,6 +171,10 @@ end
 buildLobby()
 currentMap = buildMap1()
 
+function MapService.getLobbySpawn(): Vector3
+	return LOBBY_ORIGIN + Vector3.new(0, 3, 0)
+end
+
 function MapService.getCurrentMap(): Model
 	return currentMap
 end
