@@ -1,0 +1,3 @@
+--!strict
+
+print("Server started")
