@@ -10,6 +10,8 @@ local REMOTE_NAMES = {
 	"PlayerUnfrozen",
 	"TimerUpdate",
 	"RoundResults",
+	"UnfreezeStarted",
+	"UnfreezeCancelled",
 }
 
 local remotes: { [string]: RemoteEvent } = {}

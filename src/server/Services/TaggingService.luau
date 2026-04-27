@@ -18,6 +18,8 @@ local activeTouches: { [Player]: { [Player]: boolean } } = {}
 local freezeDebounce: { [Player]: boolean } = {}
 
 local UNFREEZE_DISTANCE = 8
+local DEFAULT_JUMP_POWER = 50
+local DEFAULT_JUMP_HEIGHT = 7.2
 
 local function getPlayerFromPart(part: BasePart): Player?
 	local character = part.Parent
@@ -37,6 +39,32 @@ local function setWalkSpeed(player: Player, speed: number)
 		return
 	end
 	humanoid.WalkSpeed = speed
+end
+
+local function disableJump(player: Player)
+	local character = player.Character
+	if not character then
+		return
+	end
+	local humanoid = character:FindFirstChildOfClass("Humanoid") :: Humanoid?
+	if not humanoid then
+		return
+	end
+	humanoid.JumpPower = 0
+	humanoid.JumpHeight = 0
+end
+
+local function enableJump(player: Player)
+	local character = player.Character
+	if not character then
+		return
+	end
+	local humanoid = character:FindFirstChildOfClass("Humanoid") :: Humanoid?
+	if not humanoid then
+		return
+	end
+	humanoid.JumpPower = DEFAULT_JUMP_POWER
+	humanoid.JumpHeight = DEFAULT_JUMP_HEIGHT
 end
 
 local function applyFreezeEffect(character: Model)
@@ -59,10 +87,9 @@ end
 local function checkWinCondition()
 	for _, role in RoleService.getAllRoles() do
 		if role == "Hider" then
-			return -- at least one free hider remains
+			return
 		end
 	end
-	-- All hiders are frozen — seekers win
 	RoundService.forceEndSeeking("Seekers")
 end
 
@@ -73,6 +100,7 @@ local function unfreezePlayer(frozen: Player)
 
 	RoleService.setRole(frozen, "Hider")
 	setWalkSpeed(frozen, Constants.HIDER_WALKSPEED)
+	enableJump(frozen)
 	freezeDebounce[frozen] = nil
 
 	local character = frozen.Character
@@ -81,7 +109,6 @@ local function unfreezePlayer(frozen: Player)
 	end
 
 	Remotes.PlayerUnfrozen:FireAllClients(frozen)
-	print(`[TaggingService] {frozen.Name} unfrozen`)
 end
 
 local function freezePlayer(hider: Player)
@@ -95,6 +122,7 @@ local function freezePlayer(hider: Player)
 	freezeDebounce[hider] = true
 	RoleService.setRole(hider, "Frozen")
 	setWalkSpeed(hider, Constants.FROZEN_WALKSPEED)
+	disableJump(hider)
 
 	local character = hider.Character
 	if character then
@@ -102,8 +130,6 @@ local function freezePlayer(hider: Player)
 	end
 
 	Remotes.PlayerFrozen:FireAllClients(hider)
-	print(`[TaggingService] {hider.Name} frozen`)
-
 	checkWinCondition()
 end
 
@@ -130,7 +156,6 @@ local function onHiderPartTouched(hider: Player, hit: BasePart)
 		return
 	end
 
-	-- Track this unfreeze attempt (deduplicated per pair)
 	if not activeTouches[hitPlayer] then
 		activeTouches[hitPlayer] = {}
 	end
@@ -139,13 +164,15 @@ local function onHiderPartTouched(hider: Player, hit: BasePart)
 	end
 	activeTouches[hitPlayer][hider] = true
 
+	-- Notify the frozen player so they see the unfreeze countdown
+	Remotes.UnfreezeStarted:FireClient(hitPlayer)
+
 	task.delay(Constants.UNFREEZE_TOUCH_DURATION, function()
 		if not activeTouches[hitPlayer] or not activeTouches[hitPlayer][hider] then
 			return
 		end
 		activeTouches[hitPlayer][hider] = nil
 
-		-- Proximity check: still close enough after the delay?
 		local hiderChar = hider.Character
 		local frozenChar = hitPlayer.Character
 		if not hiderChar or not frozenChar then
@@ -158,6 +185,8 @@ local function onHiderPartTouched(hider: Player, hit: BasePart)
 		end
 		if (hiderRoot.Position - frozenRoot.Position).Magnitude <= UNFREEZE_DISTANCE then
 			unfreezePlayer(hitPlayer)
+		else
+			Remotes.UnfreezeCancelled:FireClient(hitPlayer)
 		end
 	end)
 end
@@ -167,8 +196,9 @@ local function onHiderPartTouchEnded(hider: Player, hit: BasePart)
 	if not hitPlayer then
 		return
 	end
-	if activeTouches[hitPlayer] then
+	if activeTouches[hitPlayer] and activeTouches[hitPlayer][hider] then
 		activeTouches[hitPlayer][hider] = nil
+		Remotes.UnfreezeCancelled:FireClient(hitPlayer)
 	end
 end
 
@@ -201,6 +231,12 @@ local function connectPlayerTouches(player: Player)
 end
 
 local function disconnectAll()
+	-- Restore jump for anyone still frozen
+	for player, role in RoleService.getAllRoles() do
+		if role == "Frozen" then
+			enableJump(player)
+		end
+	end
 	for _, conn in connections do
 		conn:Disconnect()
 	end

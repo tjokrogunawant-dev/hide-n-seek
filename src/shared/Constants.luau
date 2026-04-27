@@ -8,7 +8,7 @@ return table.freeze({
 	INTERMISSION_DURATION = 10,
 	SEEKER_RATIO = 0.25, -- 25% of players become seekers
 	UNFREEZE_TOUCH_DURATION = 2, -- seconds of contact needed to unfreeze
-	SEEKER_WALKSPEED = 18,
-	HIDER_WALKSPEED = 16,
+	SEEKER_WALKSPEED = 24,
+	HIDER_WALKSPEED = 20,
 	FROZEN_WALKSPEED = 0,
 })
