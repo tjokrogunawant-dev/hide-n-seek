@@ -192,11 +192,7 @@ function MapService.teleportPlayerTo(player: Player, position: Vector3)
 	if not character then
 		return
 	end
-	local root = character:FindFirstChild("HumanoidRootPart") :: BasePart?
-	if not root then
-		return
-	end
-	root.CFrame = CFrame.new(position)
+	character:PivotTo(CFrame.new(position))
 end
 
 return MapService

@@ -28,6 +28,7 @@ local function setWalkSpeed(player: Player, speed: number)
 end
 
 local function assignRoles()
+	task.wait(0.1) -- let characters finish loading before teleporting
 	local allPlayers = Players:GetPlayers()
 	local count = #allPlayers
 	local seekerCount = math.ceil(count * Constants.SEEKER_RATIO)
