@@ -289,6 +289,119 @@ Each map has its own `HiderSpawns` and `SeekerSpawns` folders.
 
 ---
 
+## Stage 8b: Biome Maps with Vertical Play & Seeker Abilities (v1.1b)
+
+**Goal:** Replace the flat prototype map with 3 distinct biome maps that have vertical layers, biome-appropriate obstacles, and two seeker abilities that make finding hiders a fair challenge on complex terrain.
+
+---
+
+### Game Balance Rationale
+
+Vertical maps create many more hiding spots and escape routes. Without compensating the seekers, rounds become stalemates. Two abilities address this:
+
+1. **Speed Pulse** — seeker activates a short speed burst (1.5× speed for 3s, 20s cooldown). Lets seekers close gaps after spotting someone on a different level.
+2. **Proximity Ping** — every 25s, all seekers automatically emit a radar pulse. Any hider within 20 studs gets a glowing highlight visible only to seekers for 3 seconds. Punishes hiders who camp in one spot too long. Hiders who keep moving are harder to catch even when pinged.
+
+These two together mean: seekers can detect nearby hiders periodically, then sprint to reach them before the highlight fades.
+
+---
+
+### Biomes
+
+#### Biome 1 — Forest
+- **Floor:** dark green grass, irregular shape (not a perfect square)
+- **Obstacles:** tall thin cylinders (trees) with sphere canopies, bush clusters (low wide spheres), fallen log Parts at ground level
+- **Vertical:** tree platforms (Parts lodged in tree canopies reachable by jumping), a raised wooden watchtower with ramp access
+- **Color palette:** greens, browns, dark earth
+
+#### Biome 2 — Urban Ruins
+- **Floor:** grey concrete
+- **Obstacles:** ruined building shells (hollow box structures with open tops and windows players can jump through), rubble piles, collapsed walls at varying heights
+- **Vertical:** multi-floor buildings — stacked platforms inside shells reachable via internal ramps, rooftops accessible from fire escape stairs
+- **Color palette:** greys, off-whites, rust orange accents
+
+#### Biome 3 — Arctic
+- **Floor:** white snow (SmoothPlastic, white), Humanoid `WalkSpeed` unchanged but visually feels open
+- **Obstacles:** ice spires (tall thin wedge/pyramid shapes), snowdrift mounds (low wide parts), igloo domes (sphere halves)
+- **Vertical:** tiered ice shelves — 3 height levels of flat ice platforms connected by ramps, giving the most open vertical layout of the three maps
+- **Color palette:** whites, pale blues, cyan ice
+
+---
+
+### Seeker Abilities Implementation
+
+**Constants to add:**
+```luau
+SEEKER_SPRINT_MULTIPLIER = 1.5,
+SEEKER_SPRINT_DURATION = 3,
+SEEKER_SPRINT_COOLDOWN = 20,
+PING_INTERVAL = 25,         -- seconds between automatic pings
+PING_RADIUS = 20,           -- studs
+PING_HIGHLIGHT_DURATION = 3,
+```
+
+**New remote events to add to Remotes.luau:**
+- `SeekerSprintReady` (server → client) — notify seeker their sprint is off cooldown
+- `SeekerPingFired` (server → client) — tell seekers which players were detected (for client-side highlight)
+
+**Files to create/modify:**
+- `src/server/Services/SeekerAbilityService.luau` — owns both abilities, hooks into RoundService
+- `src/shared/Remotes.luau` — add sprint/ping remotes
+- `src/shared/Constants.luau` — add ability constants
+- `src/client/Controllers/SeekerHUDController.luau` — sprint button (mobile) / keybind (PC), cooldown indicator, ping flash effect
+
+**SeekerAbilityService logic:**
+- On `Seeking` start: begin the ping loop (fires every PING_INTERVAL seconds), connect sprint request remote
+- On sprint request from client: validate requester is a Seeker, validate cooldown, apply 1.5× walkspeed for SPRINT_DURATION, restore after, start cooldown, fire `SeekerSprintReady` when cooldown expires
+- On ping loop tick: for each seeker, find all hiders within PING_RADIUS studs, fire `SeekerPingFired` to all seekers with the list of detected players
+- On `Results`: cancel ping loop, clear all sprint states
+
+---
+
+### Map Structure
+```
+Workspace.Maps
+  Forest/
+    Floor
+    Trees/       (cylinders + sphere canopies)
+    Bushes/
+    Platforms/   (elevated Parts in canopies)
+    Watchtower/
+    HiderSpawns/
+    SeekerSpawns/
+  UrbanRuins/
+    Floor
+    Buildings/   (hollow shells with internal floors)
+    Rubble/
+    HiderSpawns/
+    SeekerSpawns/
+  Arctic/
+    Floor
+    IceSpires/
+    Snowdrifts/
+    IceShelves/  (3 tiers of flat platforms)
+    HiderSpawns/
+    SeekerSpawns/
+```
+
+Each map has at least **12 hider spawns** (spread across ground level and elevated platforms) and **3 seeker spawns** (central cluster so seekers start together).
+
+---
+
+**Acceptance criteria:**
+- [ ] 3 maps generate without errors, each visually distinct
+- [ ] All 3 maps have elevated areas reachable on foot (ramps, not just jumping)
+- [ ] Every `HiderSpawns` folder has ≥ 12 Parts, including some at elevation
+- [ ] Seeking phase: automatic ping fires every 25s, nearby hiders glow for seekers only
+- [ ] Seeker can activate sprint — moves faster for 3s, then returns to normal speed
+- [ ] Sprint button shows cooldown state in client HUD
+- [ ] Round still ends correctly via timeout or win condition on all 3 maps
+
+**Prompt for agent:**
+> Stage 8b: Build 3 biome maps (Forest, Urban Ruins, Arctic) each with vertical layers and 12+ hider spawns including elevated positions. Ramps must connect levels — hiders and seekers should be able to reach all heights without jumping puzzles. Replace the Stage 3 prototype map. Add SeekerAbilityService: automatic ping every 25s that highlights hiders within 20 studs for seekers only (Highlight instance, visible 3s), plus a sprint ability (1.5× speed for 3s, 20s cooldown) triggered by client remote. Add new Constants and Remotes. Build a minimal SeekerHUDController showing sprint button and cooldown timer.
+
+---
+
 ## Stage 9: Player Stats & Persistence (v1.2)
 
 **Goal:** Track wins, freezes, and unfreezes per player, persist across sessions using DataStoreService.
@@ -460,7 +573,8 @@ ZONE_COUNTDOWN_FULL = 5,     -- seconds when 8 players present
 | 6 | Freeze tag mechanic | Large |
 | 7 | Client UI | Medium |
 | **— v1 ships here —** | | |
-| 8 | Multiple maps | Small |
+| 8 | Multiple random maps | Small |
+| 8b | Biome maps + seeker abilities | Large |
 | 9 | Persistence | Large |
 | 10 | Shop | Large |
 | 11a | Multi-zone matchmaking | Large |
