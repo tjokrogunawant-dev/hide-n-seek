@@ -161,6 +161,13 @@ local function buildMap1(): Model
 	return map
 end
 
+-- Remove the default Baseplate and SpawnLocation Roblox puts in every new place
+for _, child in Workspace:GetChildren() do
+	if child.Name == "Baseplate" or child:IsA("SpawnLocation") then
+		child:Destroy()
+	end
+end
+
 buildLobby()
 currentMap = buildMap1()
 
