@@ -363,6 +363,91 @@ return {
 
 ---
 
+## Stage 11: Lobby Polish (v1.4)
+
+**Goal:** Replace the single-spawn lobby with a social hub that has multiple game zones, a leaderboard, and a shop NPC. Players walk into a zone to queue for a game; all players in that zone launch together.
+
+---
+
+### 11a: Multi-Zone Matchmaking
+
+**Concept:** The lobby has several **Game Portals** (glowing pads). Each portal is an independent queue holding up to 8 players. When ≥ 2 players are standing on a portal, a countdown starts. If the portal fills to 8, the countdown resets to a much shorter value. When the countdown hits 0, everyone on that portal is sent into a game together (their own server/round).
+
+**Constants to add:**
+```luau
+MAX_PLAYERS_PER_ZONE = 8,
+ZONE_MIN_PLAYERS = 2,
+ZONE_COUNTDOWN_NORMAL = 30,  -- seconds when 2–7 players present
+ZONE_COUNTDOWN_FULL = 5,     -- seconds when 8 players present
+```
+
+**Files to create/modify:**
+- `src/server/Services/LobbyService.luau` — manages all portal zones, player queues, per-zone countdowns
+- `src/server/Services/MapService.luau` — add `buildLobby()` portals (glowing circular pads, each with a proximity trigger)
+- `src/shared/Remotes.luau` — add `ZoneCountdownUpdate`, `ZonePlayersChanged` remotes
+- `src/client/Controllers/LobbyController.luau` — show per-zone player count and countdown above each portal
+
+**LobbyService responsibilities:**
+- Track which players are standing on which portal via `Touched` / `TouchEnded`
+- Per-zone countdown loop: starts when zone reaches ZONE_MIN_PLAYERS, resets to ZONE_COUNTDOWN_FULL when zone is full
+- On countdown reaching 0: call `RoundService.startRound(playersInZone)` and remove them from the zone
+- Broadcast `ZonePlayersChanged` and `ZoneCountdownUpdate` to all clients so the UI stays live
+
+**Portal layout (in lobby):**
+- 3–4 circular pads arranged around the lobby floor
+- Each pad labeled "Zone 1", "Zone 2", etc.
+- Glowing neon color (e.g. cyan) so they're easy to spot
+- Billboard GUI above each showing player count (e.g. "3 / 8") and countdown
+
+**Acceptance criteria:**
+- [ ] Walking onto a portal adds you to that zone (visible in count above pad)
+- [ ] Walking off removes you
+- [ ] Countdown starts when 2 players are on same portal
+- [ ] Countdown jumps to 5s when portal hits 8 players
+- [ ] Countdown resets if player count drops below 2
+- [ ] All players on the portal teleport to the map together when countdown hits 0
+
+**Prompt for agent:**
+> Stage 11a: Build multi-zone lobby matchmaking. Add 3 circular neon portal pads to the lobby in MapService. Create LobbyService to track which players stand on each portal using Touched/TouchEnded on the pad parts. Each zone runs its own countdown coroutine: 30s normally, 5s when full (8 players), resets if count drops below 2. When countdown hits 0, fire all players in that zone into a round together. Add ZoneCountdownUpdate and ZonePlayersChanged remotes. Add a BillboardGui above each pad showing count and timer. Wire into RoundService so a zone launch starts a round for exactly those players.
+
+---
+
+### 11b: Leaderboard
+
+**Goal:** A physical leaderboard board in the lobby showing top 10 players by wins.
+
+**Files to create:**
+- `src/server/Services/LeaderboardService.luau` — reads top stats from DataStore ordered datastore, updates the board every 60s
+- Physical `SurfaceGui` Part placed in the lobby (created programmatically)
+
+**Acceptance criteria:**
+- [ ] Leaderboard Part visible in lobby
+- [ ] Shows top 10 player names + win counts
+- [ ] Refreshes every 60s
+
+**Prompt for agent:**
+> Stage 11b: Add a physical leaderboard to the lobby. Create a tall Part in the lobby with a SurfaceGui showing the top 10 players by wins. Use an OrderedDataStore keyed by UserId to fetch the leaderboard. Refresh every 60 seconds. Build LeaderboardService to own this logic.
+
+---
+
+### 11c: Shop NPC
+
+**Goal:** An NPC standing in the lobby that opens the shop UI when a player walks up to it.
+
+**Files to create/modify:**
+- `src/server/Services/NPCService.luau` — spawns the shop NPC model (or a placeholder dummy) in the lobby
+- `src/client/Controllers/ShopController.luau` — opens shop GUI on ProximityPrompt interact (replaces or supplements the existing shop UI trigger)
+
+**Acceptance criteria:**
+- [ ] NPC model visible in lobby
+- [ ] ProximityPrompt appears when player is nearby
+- [ ] Activating it opens the shop UI
+
+**Prompt for agent:**
+> Stage 11c: Add a shop NPC to the lobby. Spawn a Dummy model (using InsertService or a manually placed model) at a fixed lobby position. Attach a ProximityPrompt to it labelled "Shop". On the client, when the prompt fires, open the shop UI from ShopController. The NPC should have a nameplate ("Shop").
+
+---
+
 # Implementation Order Summary
 
 | Stage | Deliverable | Approx. complexity |
@@ -378,6 +463,9 @@ return {
 | 8 | Multiple maps | Small |
 | 9 | Persistence | Large |
 | 10 | Shop | Large |
+| 11a | Multi-zone matchmaking | Large |
+| 11b | Leaderboard board | Medium |
+| 11c | Shop NPC | Small |
 
 ---
 
