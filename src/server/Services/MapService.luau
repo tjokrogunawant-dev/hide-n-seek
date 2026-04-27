@@ -54,7 +54,7 @@ local function buildLobby()
 	spawnLocation.Anchored = true
 	spawnLocation.Neutral = true
 	spawnLocation.Duration = 0
-	spawnLocation.Color = BrickColor.new("Bright yellow")
+	spawnLocation.Color = Color3.fromRGB(255, 215, 0)
 	spawnLocation.TopSurface = Enum.SurfaceType.Smooth
 	spawnLocation.BottomSurface = Enum.SurfaceType.Smooth
 	spawnLocation.Parent = lobby
